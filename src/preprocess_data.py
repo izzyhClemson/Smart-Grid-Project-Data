@@ -153,12 +153,10 @@ def split_data(split_dir: Path, file2labels: dict):
         X   = np.vstack(feature_matrix_list)
         y_event_encoded = np.array([lm_event[e] for e in y_event], dtype=np.int64)
         y_area_encoded  = np.array([lm_area[a]  for a in y_area],  dtype=np.int64)
-        # BUGFIX: use y_sub, not y_sub_encoded!
         y_sub_encoded   = np.array([lm_sub[s]   for s in y_sub],   dtype=np.int64)
         bus_ids_arr     = np.array(bus_ids, dtype=np.int64)
 
     label_maps = {"event": lm_event, "area": lm_area, "substation": lm_sub}
-    # return bus ids too
     return X, y_event_encoded, y_area_encoded, y_sub_encoded, bus_ids_arr, label_maps
 
 def main():

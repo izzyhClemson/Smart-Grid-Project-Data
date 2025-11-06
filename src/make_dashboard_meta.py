@@ -4,8 +4,6 @@ import numpy as np
 import pandas as pd
 
 # -----------------------------
-# Paths (script assumed in src/)
-# -----------------------------
 ROOT = Path(__file__).resolve().parents[1]
 ART  = ROOT / "stats_roc_mt"
 OUT  = ROOT / "results" / "dashboard" / "data"
@@ -13,17 +11,15 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 DESC_XLSX = ROOT / "Data_Description.xlsx"
 
-# -----------------------------------------
-# Helpers: area normalization & bus parsing
+# Helpers
 # -----------------------------------------
 def normalize_area(a: str | None) -> int | None:
     """Map a free-form area string to an integer area_id (1,2,...) or None."""
     if a is None or (isinstance(a, float) and pd.isna(a)):
         return None
     s = str(a).strip().lower().replace("&", "and").replace(" ", "")
-    # special cases (your dataset shows "area1&area2" / topology rows)
     if "area1and2" in s or "area12" in s:
-        return None  # not a single area → skip for bus mapping
+        return None  
     if s in ("area1", "area01", "1", "a1"):
         return 1
     if s in ("area2", "area02", "2", "a2"):
@@ -32,7 +28,7 @@ def normalize_area(a: str | None) -> int | None:
     return int(m.group(1)) if m else None
 
 BUS_RE = re.compile(r"\bbus\s*(\d+)\b", re.IGNORECASE)
-VB_RE  = re.compile(r"V_B(\d+)")  # sample CSV column pattern
+VB_RE  = re.compile(r"V_B(\d+)")  
 
 def parse_bus_from_text(s: str | None) -> int | None:
     if s is None or (isinstance(s, float) and pd.isna(s)):
@@ -40,28 +36,22 @@ def parse_bus_from_text(s: str | None) -> int | None:
     m = BUS_RE.search(str(s))
     return int(m.group(1)) if m else None
 
-# -----------------------------------------
-# Coordinates for layout (up to many areas)
+# Coordinates for layout 
 # -----------------------------------------
 CENTERS_CYCLE = [(0.25,0.75),(0.75,0.75),(0.25,0.25),(0.75,0.25)]
 
 def area_center_for_index(i: int) -> tuple[float,float]:
     return CENTERS_CYCLE[i % len(CENTERS_CYCLE)]
 
-# Even/odd substations get two fixed x positions per area row
 SUB_POS = {
-    1: 0.15,  # Sub 1 x
-    2: 0.35,  # Sub 2 x
+    1: 0.15,  
+    2: 0.35,  
 }
 def sub_xy(area_idx_zero_based: int, substation_idx: int) -> tuple[float,float]:
     cx, cy = area_center_for_index(area_idx_zero_based)
-    # we override cx with prettier fixed substations spacing
     x = SUB_POS.get(substation_idx, cx)
-    return (x if cx < 0.5 else 1 - (1 - x), cy)  # mirror when area center is on right
+    return (x if cx < 0.5 else 1 - (1 - x), cy)  
 
-# -----------------------------
-# 1) Try Data_Description.xlsx
-# -----------------------------
 def build_from_description():
     if not DESC_XLSX.exists():
         return None
@@ -71,7 +61,6 @@ def build_from_description():
         print(f"[warn] Could not read {DESC_XLSX}: {e}")
         return None
 
-    # Your previous preprocessing used these columns:
     file_col = "File"
     area_col = "Unnamed: 4"
     bus_col  = "Unnamed: 5"
@@ -97,9 +86,6 @@ def build_from_description():
     print(f"[source] Using Data_Description.xlsx → {len(md)} unique buses")
     return md
 
-# -------------------------------------------------------
-# 2) Try artifacts: test_bus_ids.npy + test_y_area.npy
-# -------------------------------------------------------
 def build_from_artifacts():
     tb = ART / "test_bus_ids.npy"
     ta = ART / "test_y_area.npy"
@@ -123,9 +109,7 @@ def build_from_artifacts():
     print(f"[source] Using artifacts (.npy) → {len(md)} unique buses")
     return md
 
-# -------------------------------------------------------
-# 3) Fall back: infer bus IDs from a sample CSV columns
-# -------------------------------------------------------
+
 def build_from_csv_columns():
     sample = None
     for cand in ["Data_1.csv", "Data_10.csv", "Data_23.csv"]:
@@ -150,7 +134,6 @@ def build_from_csv_columns():
         print("[warn] No V_Bxx columns found in sample CSV.")
         return None
 
-    # Use label_maps for how many areas exist (if present)
     try:
         maps = json.load(open(ART / "label_maps.json", "r"))
         area_name_to_id = maps.get("area", {})
@@ -165,11 +148,7 @@ def build_from_csv_columns():
     print(f"[source] Using CSV columns fallback → {len(md)} buses")
     return md
 
-# -----------------------------------------
-# Main builder (tries sources in priority)
-# -----------------------------------------
 def build_bus_area_table():
-    """Return the first non-empty DataFrame built from the available sources."""
     def _is_good(x):
         return isinstance(x, pd.DataFrame) and not x.empty
 
@@ -191,27 +170,17 @@ def build_bus_area_table():
 def main():
     md = build_bus_area_table()
 
-    # Sort & ensure ints
     md["bus_id"] = md["bus_id"].astype(int)
     md["area_id"] = md["area_id"].astype(int)
     md = md.drop_duplicates().sort_values(["area_id","bus_id"])
 
-    # Derive the set of areas
     uniq_areas = sorted(md["area_id"].unique().tolist())
 
-    # -------------------------------
-    # Substation assignment
-    #   even bus → 2,  odd bus → 1
-    # (Ensures Bus 48 → Substation 2)
-    # -------------------------------
+
     md["substation_idx"] = md["bus_id"].apply(lambda b: 2 if (b % 2 == 0) else 1)
     md["substation"] = md["substation_idx"].apply(lambda i: f"Substation {i}")
 
-    # -------------------------------
-    # Coordinates: place rows by area,
-    # fixed x per substation, fixed y per area row
-    # -------------------------------
-    # Map area_id -> rank (0-based) for positioning row
+
     area_rank = {a: i for i, a in enumerate(uniq_areas)}
     xy = md.apply(
         lambda r: sub_xy(area_rank[int(r["area_id"])], int(r["substation_idx"])),
@@ -220,13 +189,11 @@ def main():
     md["x"] = [round(t[0], 4) for t in xy]
     md["y"] = [round(t[1], 4) for t in xy]
 
-    # Final bus metadata CSV
     bus_csv = OUT / "bus_metadata.csv"
     md_out = md[["bus_id","area_id","substation","x","y"]].sort_values(["area_id","substation","bus_id"])
     md_out.to_csv(bus_csv, index=False)
     print(f"[ok] wrote {bus_csv} rows: {len(md_out)}")
 
-    # Area metadata CSV
     try:
         maps = json.load(open(ART / "label_maps.json", "r"))
         area_name_to_id = maps.get("area", {})

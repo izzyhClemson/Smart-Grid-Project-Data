@@ -125,12 +125,9 @@ def display_area_label(aid: int, areas_df: pd.DataFrame | None, area_rank: dict[
     except Exception:
         return f"Area {aid}"
 
-    # Always prefer rank → guarantees uniqueness and consistency
     rank = area_rank.get(ia)
     if rank is not None:
         return f"Area {rank}"
-
-    # Fallbacks (should rarely be used)
     if areas_df is not None and not areas_df.empty and "area_id" in areas_df.columns:
         row = areas_df[areas_df["area_id"].astype(int) == ia]
         if not row.empty:
@@ -162,11 +159,9 @@ def render_cards(
         with cols[idx]:
             parts = []
 
-            # Column header
             title = display_area_label(a, areas_df, area_rank)
             parts.append(f"<h3>{title}</h3>")
 
-            # Status pill only for the affected area (uses same label)
             if a == area_id and bus_id is not None:
                 parts.append(
                     f'<div class="sg-alert">'
@@ -176,7 +171,6 @@ def render_cards(
                     f'</div>'
                 )
 
-            # Substations for this area
             subs = (
                 buses_df[buses_df["area_id"].astype(int) == a]
                 ["substation"].dropna().unique().tolist()
@@ -229,79 +223,6 @@ def render_cards(
 def dot(color, off=False):
     return f'<span class="sg-dot" style="background:{("#CBD5E1" if off else color)}"></span>'
 
-# def render_cards(buses_df, area_id, substation, event_type, bus_id, areas_df=None):
-
-#     import re
-#     area_ids = sorted(buses_df["area_id"].dropna().astype(int).unique().tolist())
-#     if not area_ids:
-#         return
-
-#     etype_norm = re.sub(r"\s+", "", str(event_type)).lower()
-
-#     cols = st.columns(len(area_ids))
-#     for idx, a in enumerate(area_ids):
-#         with cols[idx]:
-#             parts = []
-
-#             title = display_area_label(a, areas_df)
-#             parts.append(f'<h3>{title}</h3>')
-
-#             if a == area_id and bus_id is not None:
-#                 parts.append(
-#                     f'<div class="sg-alert">'
-#                     f'In <b>{display_area_label(a, areas_df)}</b> · '
-#                     f'At <b>Bus {bus_id}</b> · '
-#                     f'Event <span class="ev"><b>{event_type}</b></span>'
-#                     f'</div>'
-#                 )
-
-#             subs = (
-#                 buses_df[buses_df["area_id"].astype(int) == a]
-#                 ["substation"].dropna().unique().tolist()
-#             )
-
-#             if not subs:
-#                 if len(parts) == 1:  
-#                     continue
-#                 parts.append('<div class="sg-alert">No substations in this area.</div>')
-#             else:
-#                 for ss in subs:
-#                     label = str(ss)
-#                     if label.upper().startswith("SS-"):
-#                         label = label.replace("SS-", "Substation ")
-
-#                     active = (a == area_id and str(ss) == str(substation))
-#                     row_classes = "sg-sub sg-active" if active else "sg-sub"
-
-#                     top_on   = active and (etype_norm == "topologychange")
-#                     load_on  = active and (etype_norm == "loadchange")
-#                     fault_on = active and (etype_norm == "fault")
-#                     normal_on = not active
-
-#                     dots_html = (
-#                         '<div class="sg-dots">'
-#                         + dot(EVENT_COLORS["TopologyChange"], off=not top_on)
-#                         + dot(EVENT_COLORS["LoadChange"],     off=not load_on)
-#                         + dot(EVENT_COLORS["Fault"],          off=not fault_on)
-#                         + dot(EVENT_COLORS["Normal"],         off=not normal_on)
-#                         + '</div>'
-#                     )
-#                     tag_html = f'<span class="sg-tag">Bus {bus_id}</span>' if active and bus_id is not None else ''
-
-#                     parts.append(
-#                         f'<div class="{row_classes}">'
-#                         f'<div class="sg-subtitle">{label}</div>'
-#                         f'{dots_html}{tag_html}'
-#                         f'</div>'
-#                     )
-
-#             inner = "".join(parts).strip()
-#             if not inner:
-#                 continue
-
-#             st.markdown('<div class="sg-card">', unsafe_allow_html=True)
-#             st.markdown(inner, unsafe_allow_html=True)
-#             st.markdown('</div>', unsafe_allow_html=True)
 
 def render_sidebar(roots, files, labels, default_index=0):
     st.sidebar.markdown(
@@ -311,7 +232,6 @@ def render_sidebar(roots, files, labels, default_index=0):
         '</div>', unsafe_allow_html=True
     )
 
-    # Category counts as colorful chips with dots
     counts = {}
     for p in files:
         key = p.parent.name
@@ -331,7 +251,6 @@ def render_sidebar(roots, files, labels, default_index=0):
 
     st.sidebar.markdown(f'<div class="sg-sidecard">{chips_html}</div>', unsafe_allow_html=True)
 
-    # File select and buttons
     chosen_label = st.sidebar.selectbox("Test files", labels, index=default_index)
     c1, c2 = st.sidebar.columns(2)
     run = c1.button("Classify ▶", use_container_width=True)
@@ -353,7 +272,6 @@ def main():
     try:
         buses = pd.read_csv(data_dir/"bus_metadata.csv")
         buses["area_id"] = buses["area_id"].astype(int)
-        # Build a stable 1..N display label for each raw area_id
         unique_area_ids = sorted(buses["area_id"].astype(int).unique())
         area_rank = {aid: i + 1 for i, aid in enumerate(unique_area_ids)}
 

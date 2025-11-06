@@ -38,7 +38,7 @@ def load_artifacts(art_dir: Path):
         "area":  _load_np(art_dir, "test_y_area.npy"),
         "sub":   _load_np(art_dir, "test_y_sub.npy"),
     }
-    test_bus_ids = _load_np(art_dir, "test_bus_ids.npy")  # optional
+    test_bus_ids = _load_np(art_dir, "test_bus_ids.npy")  
 
     inverse_lm = {"event": {}, "area": {}, "sub": {}}
     lm = art_dir / "label_maps.json"
@@ -87,7 +87,6 @@ def _train_and_eval(x_train, y_train, x_test, y_test, inv_names,
             probs  = torch.softmax(logits, dim=1).numpy()
             preds  = probs.argmax(1)
 
-        # report
         if inv_names:
             cls_names = [inv_names[i] for i in sorted(inv_names)]
             print(classification_report(
