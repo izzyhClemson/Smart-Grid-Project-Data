@@ -1,0 +1,16 @@
+{
+  "event": {
+    "Fault": 0,
+    "Load Change": 1,
+    "Topology Change": 2
+  },
+  "area": {
+    "Area 1": 0,
+    "Area 2": 1
+  },
+  "substation": {
+    "Region 1 (Bus <30)": 0,
+    "Region 2 (Bus 30\u201359)": 1,
+    "Region 3 (Bus \u226560)": 2
+  }
+}
