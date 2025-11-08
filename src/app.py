@@ -119,7 +119,6 @@ def load_event_model_and_maps(art_dir: Path, hidden=(256,128)):
 
 # ========= UI HELPERS =========
 def display_area_label(aid: int, areas_df: pd.DataFrame | None, area_rank: dict[int, int]) -> str:
-    """Return a clean, unique display label for an area id using a 1..N rank."""
     try:
         ia = int(aid)
     except Exception:
@@ -137,6 +136,14 @@ def display_area_label(aid: int, areas_df: pd.DataFrame | None, area_rank: dict[
     return f"Area {ia + 1}"
 
 
+def _norm_sub_name(s: str) -> str:
+    s = str(s)
+    return s.replace("SS-", "Substation ") if s.upper().startswith("SS-") else s
+
+def _raw_sub_name(s: str) -> str:
+    s = str(s)
+    return s if s.upper().startswith("SS-") else s.replace("Substation ", "SS-")
+
 def render_cards(
     buses_df: pd.DataFrame,
     area_id: int,
@@ -147,77 +154,80 @@ def render_cards(
     area_rank: dict[int, int] | None = None,
 ):
     import re
+
+    def _norm_sub_name(s: str) -> str:
+        return str(s).replace("SS-", "Substation ") if str(s).upper().startswith("SS-") else str(s)
+
     area_rank = area_rank or {}
     area_ids = sorted(buses_df["area_id"].dropna().astype(int).unique().tolist())
     if not area_ids:
         return
 
     etype_norm = re.sub(r"\s+", "", str(event_type)).lower()
-    cols = st.columns(len(area_ids))
+    chosen_sub_norm = _norm_sub_name(substation)
 
+    cols = st.columns(len(area_ids))
     for idx, a in enumerate(area_ids):
         with cols[idx]:
-            parts = []
+            st.markdown('<div class="sg-card sg-area">', unsafe_allow_html=True)
 
             title = display_area_label(a, areas_df, area_rank)
-            parts.append(f"<h3>{title}</h3>")
+            st.markdown(f"<h3>{title}</h3>", unsafe_allow_html=True)
 
             if a == area_id and bus_id is not None:
-                parts.append(
-                    f'<div class="sg-alert">'
-                    f'In <b>{title}</b> · '
+                st.markdown(
+                    f'<div class="sg-alert">In <b>{title}</b> · '
                     f'At <b>Bus {bus_id}</b> · '
-                    f'Event <span class="ev"><b>{event_type}</b></span>'
-                    f'</div>'
+                    f'Event <span class="ev"><b>{event_type}</b></span></div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown('<div class="sg-alert placeholder"></div>', unsafe_allow_html=True)
+
+            EXPECTED_SUBS = [f"Substation {i}" for i in range(1, 4)]
+            present_raw = (
+                buses_df[buses_df["area_id"].astype(int) == a]["substation"]
+                .dropna().astype(str).unique().tolist()
+            )
+            present_norm = {s.replace("SS-", "Substation ") if s.upper().startswith("SS-") else s
+                            for s in present_raw}
+
+            for label in EXPECTED_SUBS:
+                has_bus_here = label in present_norm
+                active = (a == area_id) and (label == chosen_sub_norm) and has_bus_here
+
+                row_classes = "sg-sub"
+                if active:
+                    row_classes += " sg-active"
+                if not has_bus_here:
+                    row_classes += " sg-empty"  
+
+                top_on    = active and (etype_norm == "topologychange")
+                load_on   = active and (etype_norm == "loadchange")
+                fault_on  = active and (etype_norm == "fault")
+                normal_on = not active
+
+                dots_html = (
+                    '<div class="sg-dots">'
+                    + dot(EVENT_COLORS["TopologyChange"], off=not top_on)
+                    + dot(EVENT_COLORS["LoadChange"],     off=not load_on)
+                    + dot(EVENT_COLORS["Fault"],          off=not fault_on)
+                    + dot(EVENT_COLORS["Normal"],         off=not normal_on)
+                    + '</div>'
+                )
+                tag_html = f'<span class="sg-tag">Bus {bus_id}</span>' if active and bus_id is not None else ''
+
+                st.markdown(
+                    f'<div class="{row_classes}">'
+                    f'<div class="sg-subtitle">{label}</div>'
+                    f'{dots_html}{tag_html}'
+                    f'</div>',
+                    unsafe_allow_html=True
                 )
 
-            subs = (
-                buses_df[buses_df["area_id"].astype(int) == a]
-                ["substation"].dropna().unique().tolist()
-            )
-
-            if not subs:
-                if len(parts) == 1:
-                    continue
-                parts.append('<div class="sg-alert">No substations in this area.</div>')
-            else:
-                for ss in subs:
-                    label = str(ss)
-                    if label.upper().startswith("SS-"):
-                        label = label.replace("SS-", "Substation ")
-
-                    active = (a == area_id and str(ss) == str(substation))
-                    row_classes = "sg-sub sg-active" if active else "sg-sub"
-
-                    top_on    = active and (etype_norm == "topologychange")
-                    load_on   = active and (etype_norm == "loadchange")
-                    fault_on  = active and (etype_norm == "fault")
-                    normal_on = not active
-
-                    dots_html = (
-                        '<div class="sg-dots">'
-                        + dot(EVENT_COLORS["TopologyChange"], off=not top_on)
-                        + dot(EVENT_COLORS["LoadChange"],     off=not load_on)
-                        + dot(EVENT_COLORS["Fault"],          off=not fault_on)
-                        + dot(EVENT_COLORS["Normal"],         off=not normal_on)
-                        + '</div>'
-                    )
-                    tag_html = f'<span class="sg-tag">Bus {bus_id}</span>' if active and bus_id is not None else ''
-
-                    parts.append(
-                        f'<div class="{row_classes}">'
-                        f'<div class="sg-subtitle">{label}</div>'
-                        f'{dots_html}{tag_html}'
-                        f'</div>'
-                    )
-
-            inner = "".join(parts).strip()
-            if not inner:
-                continue
-
-            st.markdown('<div class="sg-card">', unsafe_allow_html=True)
-            st.markdown(inner, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
+
+
 
 
 def dot(color, off=False):
