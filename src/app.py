@@ -5,7 +5,6 @@ import pandas as pd
 import streamlit as st
 import torch, torch.nn as nn
 
-# ========= THEME & STYLES =========
 APP_TITLE = "Smart Grid Event Display"
 EVENT_COLORS = {"TopologyChange":"#3FA7F5","LoadChange":"#F59E0B","Fault":"#EF4444","Normal":"#22C55E"}
 EVENT_BADGE = {
@@ -40,7 +39,7 @@ def event_badge_html():
         )
     return '<div class="sg-legend">' + "".join(chips) + '</div>'
 
-# ========= FEATURE HELPERS =========
+
 def numeric(df): return df.apply(pd.to_numeric, errors="coerce").select_dtypes(include="number")
 def roc(df):
     time_col = next((c for c in df.columns if c.strip().lower()=="time"), None)
@@ -93,7 +92,6 @@ def infer_primary_bus_from_df(df: pd.DataFrame, buses_df: pd.DataFrame) -> int |
             tv_best, bus_best = float(tv), int(bid)
     return bus_best
 
-# ========= MODEL =========
 class MLP(nn.Module):
     def __init__(self, in_dim, hidden, num_classes, pdrop=0.1):
         super().__init__()
@@ -117,7 +115,7 @@ def load_event_model_and_maps(art_dir: Path, hidden=(256,128)):
     model.eval()
     return model, inv_event
 
-# ========= UI HELPERS =========
+
 def display_area_label(aid: int, areas_df: pd.DataFrame | None, area_rank: dict[int, int]) -> str:
     try:
         ia = int(aid)
@@ -268,7 +266,6 @@ def render_sidebar(roots, files, labels, default_index=0):
     return chosen_label, run, reset
 
 
-# ========= APP =========
 def main():
     st.set_page_config(page_title=APP_TITLE, layout="wide")
     data_dir = Path(os.environ.get("DASH_DATA_DIR", "results/dashboard/data"))
@@ -364,7 +361,6 @@ def main():
     if pred.get("bus_id") is None or pred.get("area_id") is None:
         st.warning("Could not map this file to a bus/area; check bus column names in the CSV.")
 
-
     render_cards(
         buses_df=buses,
         area_id=int(pred["area_id"]) if pred.get("area_id") is not None else -1,
@@ -374,7 +370,6 @@ def main():
         areas_df=areas,
         area_rank=area_rank, 
     )
-
 
     with st.expander("Debug details"):
         st.write(pred)

@@ -208,8 +208,6 @@ html, body, [class*="css"]  {
 }
 
 .sg-card.sg-area h3 { margin: 0; }
-
 .sg-area .sg-alert { margin: 0; min-height: 36px; display: flex; align-items: center; }
 .sg-area .sg-alert.placeholder { visibility: hidden; }
-
 .sg-sub { min-height: 64px; display: flex; align-items: center; }
