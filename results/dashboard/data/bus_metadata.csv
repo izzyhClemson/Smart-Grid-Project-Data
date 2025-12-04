@@ -1,17 +1,17 @@
 bus_id,area_id,substation,x,y
 25,1,Substation 1,0.15,0.75
 27,1,Substation 1,0.15,0.75
-55,1,Substation 1,0.15,0.75
-63,1,Substation 1,0.15,0.75
-20,1,Substation 2,0.35,0.75
-28,1,Substation 2,0.35,0.75
+55,1,Substation 2,0.15,0.75
+63,1,Substation 3,0.15,0.75
+20,1,Substation 1,0.35,0.75
+28,1,Substation 1,0.35,0.75
 52,1,Substation 2,0.35,0.75
-68,1,Substation 2,0.35,0.75
+68,1,Substation 3,0.35,0.75
 17,2,Substation 1,0.15,0.75
-33,2,Substation 1,0.15,0.75
-49,2,Substation 1,0.15,0.75
-53,2,Substation 1,0.15,0.75
-30,2,Substation 2,0.35,0.75
+33,2,Substation 2,0.15,0.75
+49,2,Substation 2,0.15,0.75
+53,2,Substation 2,0.15,0.75
+30,2,Substation 1,0.35,0.75
 32,2,Substation 2,0.35,0.75
 36,2,Substation 2,0.35,0.75
 48,2,Substation 2,0.35,0.75
